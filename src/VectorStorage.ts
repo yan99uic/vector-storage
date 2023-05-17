@@ -32,11 +32,13 @@ export class VectorStorage {
   private readonly debounceTime: number;
   private readonly openaiModel: string;
   private readonly openaiApiKey: string;
+  private readonly openaiApiURL: string;
 
   constructor(options: IVSOptions) {
     this.maxSizeInMB = options.maxSizeInMB ?? constants.DEFAULT_MAX_SIZE_IN_MB;
     this.debounceTime = options.debounceTime ?? constants.DEFAULT_DEBOUNCE_TIME;
     this.openaiModel = options.openaiModel ?? constants.DEFAULT_OPENAI_MODEL;
+    this.openaiApiURL = options.openAIApiURL ?? constants.OPENAI_API_URL;
 
     this.loadFromIndexDbStorage();
     const { openAIApiKey } = options;
@@ -89,13 +91,15 @@ export class VectorStorage {
   }
 
   private async embedTexts(texts: string[]): Promise<number[][]> {
-    const response = await fetch(constants.OPENAI_API_URL, {
+    // extended to support Azure OpenAI
+    const response = await fetch(this.openaiApiURL, {
       body: JSON.stringify({
         input: texts,
         model: this.openaiModel,
       }),
       headers: {
-        Authorization: `Bearer ${this.openaiApiKey}`,
+        ...(this.openaiApiURL.indexOf('azure') < 0) && { Authorization: `Bearer ${this.openaiApiKey}` },
+        ...(this.openaiApiURL.indexOf('azure') > 0) && { 'api-key': `${this.openaiApiKey}` },
         'Content-Type': 'application/json',
       },
       method: 'POST',
